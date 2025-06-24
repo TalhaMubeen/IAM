@@ -1,0 +1,22 @@
+{
+  "name": "iam-system-mid",
+  "version": "1.0.0",
+  "description": "A MERN stack application for identity and access management",
+  "workspaces": ["client", "server"],
+  "scripts": {
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm start",
+    "client": "cd client && npm start",
+    "build": "npm run build --workspace=client",
+    "test": "npm test --workspaces",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.2"
+  },
+  "author": "Talha Mubeen <talhamubeen@outlook.com>",
+  "license": "ISC",
+  "type": "commonjs"
+}

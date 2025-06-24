@@ -1,0 +1,36 @@
+openapi: 3.0.0
+info:
+  title: IAM System API
+  version: 1.0.0
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '201': { description: User created }
+        '400': { description: Invalid input }
+  /auth/login:
+    post:
+      summary: Login and get JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200': { description: JWT and refresh token }
+        '401': { description: Invalid credentials }
+  # Add other endpoints similarly
