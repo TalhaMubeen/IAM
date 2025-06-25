@@ -64,10 +64,9 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (validateForm()) {
-            const { confirmPassword, ...registerData } = formData;
+            console.log(formData);
             try {
-                await authRegister(registerData.username, registerData.email, registerData.password);
-                dispatch(register(registerData)).then((result) => {
+                dispatch(register(formData)).then((result) => {
                     if (!result.error) {
                         navigate('/login');
                     }
