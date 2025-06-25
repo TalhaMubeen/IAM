@@ -13,7 +13,7 @@ const updateUserSchema = Joi.object({
 }).min(1); // At least one field must be provided
 
 const assignGroupsSchema = Joi.object({
-    groupIds: Joi.array().items(Joi.number().integer().positive()).required()
+    groupId: Joi.array().items(Joi.number().integer().positive()).required()
 });
 
 module.exports = {

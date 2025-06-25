@@ -6,12 +6,10 @@ const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000/api";
 // Async thunks
 export const login = createAsyncThunk(
   "auth/login",
-  async (credentials, { rejectWithValue, dispatch }) => {
+  async (credentials, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${API_URL}/auth/login`, credentials);
       localStorage.setItem("token", response.data.token);
-      // Fetch permissions after successful login
-      await dispatch(fetchPermissions());
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || { message: "Login failed" });

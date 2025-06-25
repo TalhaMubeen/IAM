@@ -83,8 +83,8 @@ class UserController {
     async assignGroups(req, res) {
         try {
             const { id } = req.params;
-            const { groupIds } = req.body;
-            await userService.assignGroups(id, groupIds);
+            const { groupId } = req.body;
+            await userService.assignGroup(id, groupId);
             res.json({ message: 'Groups assigned successfully' });
         } catch (error) {
             logger.error('Error assigning groups:', error);

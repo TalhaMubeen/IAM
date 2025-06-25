@@ -81,8 +81,8 @@ class GroupController {
     async assignRoles(req, res) {
         try {
             const { id } = req.params;
-            const { roleIds } = req.body;
-            await groupService.assignRoles(id, roleIds);
+            const { roleId } = req.body;
+            await groupService.assignRoles(id, roleId);
             res.json({ message: 'Roles assigned successfully' });
         } catch (error) {
             logger.error('Error assigning roles:', error);

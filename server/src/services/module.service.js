@@ -4,12 +4,32 @@ const { db } = require('../config/db.config');
 class ModuleService {
     async getAllModules() {
         return new Promise((resolve, reject) => {
-            db.all('SELECT * FROM modules', (err, modules) => {
+            logger.info('Executing getAllModules query');
+            const query = `
+                SELECT 
+                    m.id,
+                    m.name,
+                    m.description,
+                    m.created_at,
+                    m.updated_at,
+                    GROUP_CONCAT(p.action) AS permissions
+                FROM modules m
+                LEFT JOIN permissions p ON m.id = p.module_id
+                GROUP BY m.id, m.name, m.description, m.created_at, m.updated_at
+            `;
+            db.all(query, (err, modules) => {
                 if (err) {
                     logger.error('Error fetching modules:', err);
                     reject(err);
+                    return;
                 }
-                resolve(modules);
+                logger.info('Modules fetched from database:', { count: modules.length });
+                // Parse permissions into an array
+                const parsedModules = modules.map(module => ({
+                    ...module,
+                    permissions: module.permissions ? module.permissions.split(',') : []
+                }));
+                resolve(parsedModules);
             });
         });
     }

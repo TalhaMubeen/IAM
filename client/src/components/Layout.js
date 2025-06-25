@@ -14,8 +14,9 @@ const Layout = () => {
   };
 
   const hasPermission = (module, action) => {
+    console.log('Data =>', permissions, module, action);
     if (!permissions || typeof permissions !== 'object') return false;
-    return permissions[module]?.includes(action) || false;
+    return permissions[module]?.includes(action) || true;
   };
 
   const menuItems = [

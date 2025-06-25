@@ -6,25 +6,25 @@ const { createGroupSchema, updateGroupSchema, assignRolesSchema } = require('../
 const { checkPermission } = require('../middleware/checkPermission.middleware');
 const groupController = require('../controllers/group.controller');
 
-// Get all groups
-router.get('/', verifyToken, checkPermission('groups', 'read'), groupController.getAllGroups);
+// Get all group
+router.get('/', verifyToken, checkPermission('group', 'read'), groupController.getAllGroups);
 
 // Get group by ID
-router.get('/:id', verifyToken, checkPermission('groups', 'read'), groupController.getGroupById);
+router.get('/:id', verifyToken, checkPermission('group', 'read'), groupController.getGroupById);
 
 // Create group
-router.post('/', verifyToken, checkPermission('groups', 'create'), validate(createGroupSchema), groupController.createGroup);
+router.post('/', verifyToken, checkPermission('group', 'create'), validate(createGroupSchema), groupController.createGroup);
 
 // Update group
-router.put('/:id', verifyToken, checkPermission('groups', 'update'), validate(updateGroupSchema), groupController.updateGroup);
+router.put('/:id', verifyToken, checkPermission('group', 'update'), validate(updateGroupSchema), groupController.updateGroup);
 
 // Delete group
-router.delete('/:id', verifyToken, checkPermission('groups', 'delete'), groupController.deleteGroup);
+router.delete('/:id', verifyToken, checkPermission('group', 'delete'), groupController.deleteGroup);
 
 // Assign roles to group
-router.post('/:id/roles', verifyToken, checkPermission('groups', 'update'), validate(assignRolesSchema), groupController.assignRoles);
+router.post('/:id/roles', verifyToken, checkPermission('group', 'update'), validate(assignRolesSchema), groupController.assignRoles);
 
 // Get group's roles
-router.get('/:id/roles', verifyToken, checkPermission('groups', 'read'), groupController.getGroupRoles);
+router.get('/:id/roles', verifyToken, checkPermission('group', 'read'), groupController.getGroupRoles);
 
 module.exports = router;

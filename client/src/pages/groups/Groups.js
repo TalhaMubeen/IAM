@@ -1,122 +1,328 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import api from '../../services/api.service';
+import { groupAPI, roleAPI } from '../../services/api.service';
+import CRUDTable from '../../components/CRUDTable';
+import Modal from '../../components/Modal';
 
 const Groups = () => {
-    const [groups, setGroups] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
     const { checkPermission } = useAuth();
+    const [groups, setGroups] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [selectedGroup, setSelectedGroup] = useState(null);
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+    });
+
+    // Permission checks
+    const canCreate = checkPermission('group', 'create');
+    const canRead = checkPermission('group', 'read');
+    const canUpdate = checkPermission('group', 'update');
+    const canDelete = checkPermission('group', 'delete');
+    const canAssign = checkPermission('group', 'update'); // Role assignment requires group update permission
+
+    const columns = [
+        { key: 'name', label: 'Name' },
+        { key: 'description', label: 'Description' },
+        {
+            key: 'roles',
+            label: 'Roles',
+            render: (roles) => (
+                <div className="flex flex-wrap gap-1">
+                    {roles?.map((role) => (
+                        <span
+                            key={role}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                        >
+                            {role}
+                        </span>
+                    ))}
+                </div>
+            ),
+        },
+        {
+            key: 'users',
+            label: 'Users',
+            render: (users) => (
+                <div className="flex flex-wrap gap-1">
+                    {users?.map((user) => (
+                        <span
+                            key={user}
+                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                        >
+                            {user}
+                        </span>
+                    ))}
+                </div>
+            ),
+        },
+    ];
+
+    const fetchGroups = async () => {
+        if (!canRead) {
+            setError("You don't have permission to view groups");
+            setIsLoading(false);
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await groupAPI.getAll();
+            setGroups(response.data);
+            setError('');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to fetch groups');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const fetchRoles = async () => {
+        if (!canAssign) {
+            return;
+        }
+
+        try {
+            const response = await roleAPI.getAll(); // Assumes roleAPI.getAll exists
+            setRoles(response.data);
+        } catch (err) {
+            console.error('Failed to fetch roles:', err);
+            setError(err.response?.data?.message || 'Failed to fetch roles');
+        }
+    };
 
     useEffect(() => {
         fetchGroups();
-    }, []);
+        fetchRoles();
+    }, [canRead, canAssign]);
 
-    const fetchGroups = async () => {
-        try {
-            const response = await api.groups.getAll();
-            setGroups(response.data);
-            setLoading(false);
-        } catch (err) {
-            setError('Failed to fetch groups');
-            setLoading(false);
+    const handleAdd = () => {
+        if (!canCreate) {
+            setError("You don't have permission to create groups");
+            return;
+        }
+        setFormData({ name: '', description: '' });
+        setSelectedGroup(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (group) => {
+        if (!canUpdate) {
+            setError("You don't have permission to update groups");
+            return;
+        }
+        setFormData({
+            name: group.name,
+            description: group.description,
+        });
+        setSelectedGroup(group);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (group) => {
+        if (!canDelete) {
+            setError("You don't have permission to delete groups");
+            return;
+        }
+
+        if (window.confirm('Are you sure you want to delete this group?')) {
+            try {
+                await groupAPI.delete(group.id);
+                setGroups(groups.filter(g => g.id !== group.id));
+                setError('');
+            } catch (err) {
+                setError(err.response?.data?.message || 'Failed to delete group');
+            }
         }
     };
 
-    const handleDelete = async (groupId) => {
-        if (!window.confirm('Are you sure you want to delete this group?')) return;
-        
+    const handleAssign = (group) => {
+        if (!canAssign) {
+            setError("You don't have permission to assign roles to groups");
+            return;
+        }
+        setSelectedGroup(group);
+        setIsAssignModalOpen(true);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!canCreate && !selectedGroup) {
+            setError("You don't have permission to create groups");
+            return;
+        }
+        if (!canUpdate && selectedGroup) {
+            setError("You don't have permission to update groups");
+            return;
+        }
         try {
-            await api.groups.delete(groupId);
-            setGroups(groups.filter(group => group.id !== groupId));
+            if (selectedGroup) {
+                await groupAPI.update(selectedGroup.id, formData);
+            } else {
+                await groupAPI.create(formData);
+            }
+            setIsModalOpen(false);
+            fetchGroups();
+            setError('');
         } catch (err) {
-            setError('Failed to delete group');
+            setError(err.response?.data?.message || 'Failed to save group');
         }
     };
 
-    if (loading) return <div>Loading...</div>;
-    if (error) return <div className="text-red-500">{error}</div>;
+    const handleRoleAssignment = async (roleId) => {
+        if (!canAssign) {
+            setError("You don't have permission to assign roles to groups");
+            return;
+        }
+        try {
+            await groupAPI.assignRole(selectedGroup.id, roleId);
+            setIsAssignModalOpen(false);
+            fetchGroups();
+            setError('');
+        } catch (err) {
+            setError(err.response?.data?.message || 'Failed to assign role to group');
+        }
+    };
+
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    if (isLoading) return <div className="flex justify-center items-center h-64">Loading...</div>;
+    if (error) return (
+        <div className="flex justify-center items-center h-64">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <strong className="font-bold">Error: </strong>
+                <span className="block sm:inline">{error}</span>
+            </div>
+        </div>
+    );
 
     return (
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="sm:flex sm:items-center">
-                <div className="sm:flex-auto">
-                    <h1 className="text-xl font-semibold text-gray-900">Groups</h1>
-                    <p className="mt-2 text-sm text-gray-700">
-                        A list of all groups in the system including their name, description, and assigned roles.
-                    </p>
-                </div>
-                {checkPermission('groups:create') && (
-                    <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+            <CRUDTable
+                title="Groups"
+                module="group"
+                data={groups}
+                columns={columns}
+                onAdd={canCreate ? handleAdd : null}
+                onEdit={canUpdate ? handleEdit : null}
+                onDelete={canDelete ? handleDelete : null}
+                onAssign={canAssign ? handleAssign : null}
+                permissions={{
+                    create: canCreate,
+                    read: canRead,
+                    update: canUpdate,
+                    delete: canDelete,
+                    assign: canAssign,
+                }}
+                isLoading={isLoading}
+                error={error}
+            />
+
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title={selectedGroup ? 'Edit Group' : 'Add Group'}
+                footer={
+                    <div className="flex justify-end space-x-3">
                         <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
+                            className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            onClick={() => setIsModalOpen(false)}
                         >
-                            Add group
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            onClick={handleSubmit}
+                        >
+                            {selectedGroup ? 'Update' : 'Create'}
                         </button>
                     </div>
-                )}
-            </div>
-            <div className="mt-8 flex flex-col">
-                <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
-                    <div className="inline-block min-w-full py-2 align-middle md:px-6 lg:px-8">
-                        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                            <table className="min-w-full divide-y divide-gray-300">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                                            Name
-                                        </th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                                            Description
-                                        </th>
-                                        <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                                            Roles
-                                        </th>
-                                        <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                                            <span className="sr-only">Actions</span>
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 bg-white">
-                                    {groups.map((group) => (
-                                        <tr key={group.id}>
-                                            <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                                                {group.name}
-                                            </td>
-                                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                {group.description}
-                                            </td>
-                                            <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                                                {group.roles?.map(r => r.name).join(', ')}
-                                            </td>
-                                            <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                                                {checkPermission('groups:update') && (
-                                                    <button
-                                                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                )}
-                                                {checkPermission('groups:delete') && (
-                                                    <button
-                                                        onClick={() => handleDelete(group.id)}
-                                                        className="text-red-600 hover:text-red-900"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                }
+            >
+                <form className="space-y-4">
+                    <div>
+                        <label
+                            htmlFor="name"
+                            className="block text-sm font-medium text-gray-700"
+                        >
+                            Name
+                        </label>
+                        <input
+                            type="text"
+                            name="name"
+                            id="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label
+                            htmlFor="description"
+                            className="block text-sm font-medium text-gray-700"
+                        >
+                            Description
+                        </label>
+                        <textarea
+                            name="description"
+                            id="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows={3}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                        />
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal
+                isOpen={isAssignModalOpen}
+                onClose={() => setIsAssignModalOpen(false)}
+                title="Assign Role"
+                footer={
+                    <div className="flex justify-end space-x-3">
+                        <button
+                            type="button"
+                            className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            onClick={() => setIsAssignModalOpen(false)}
+                        >
+                            Close
+                        </button>
+                    </div>
+                }
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-500">
+                        Select a role to assign to {selectedGroup?.name}:
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                        {roles.map((role) => (
+                            <button
+                                key={role.id}
+                                onClick={() => handleRoleAssignment(role.id)}
+                                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            >
+                                {role.name}
+                            </button>
+                        ))}
                     </div>
                 </div>
-            </div>
+            </Modal>
         </div>
     );
 };
 
-export default Groups; 
+export default Groups;

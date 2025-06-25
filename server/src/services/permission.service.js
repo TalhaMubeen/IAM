@@ -4,18 +4,35 @@ const { db } = require('../config/db.config');
 class PermissionService {
     async getAllPermissions() {
         return new Promise((resolve, reject) => {
+            logger.info('Executing getAllPermissions query');
             const query = `
-                SELECT p.*, m.name as module_name
+                SELECT 
+                    p.id,
+                    p.action,
+                    p.module_id,
+                    m.name AS module_name,
+                    m.description AS module_description
                 FROM permissions p
-                JOIN modules m ON p.module_id = m.id
+                LEFT JOIN modules m ON p.module_id = m.id
             `;
-
             db.all(query, (err, permissions) => {
                 if (err) {
                     logger.error('Error fetching permissions:', err);
                     reject(err);
+                    return;
                 }
-                resolve(permissions);
+                logger.info('Permissions fetched from database:', { count: permissions.length });
+                // Transform to match expected frontend format
+                const parsedPermissions = permissions.map(permission => ({
+                    id: permission.id,
+                    action: permission.action,
+                    module: {
+                        id: permission.module_id,
+                        name: permission.module_name,
+                        description: permission.module_description
+                    }
+                }));
+                resolve(parsedPermissions);
             });
         });
     }
@@ -40,16 +57,16 @@ class PermissionService {
     }
 
     async createPermission(permissionData) {
-        const { module_id, action } = permissionData;
+        const { moduleId, action } = permissionData;
 
         // Check if module exists
-        const module = await this.checkModuleExists(module_id);
+        const module = await this.checkModuleExists(moduleId);
         if (!module) {
             throw new Error('Module not found');
         }
 
         // Check if permission already exists
-        const existingPermission = await this.checkExistingPermission(module_id, action);
+        const existingPermission = await this.checkExistingPermission(moduleId, action);
         if (existingPermission) {
             throw new Error('Permission already exists for this module and action');
         }
@@ -57,13 +74,13 @@ class PermissionService {
         return new Promise((resolve, reject) => {
             db.run(
                 'INSERT INTO permissions (module_id, action) VALUES (?, ?)',
-                [module_id, action],
+                [moduleId, action],
                 function(err) {
                     if (err) {
                         logger.error('Error creating permission:', err);
                         reject(err);
                     }
-                    resolve({ id: this.lastID, module_id, action });
+                    resolve({ id: this.lastID, moduleId, action });
                 }
             );
         });

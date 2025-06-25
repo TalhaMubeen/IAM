@@ -17,16 +17,6 @@ CREATE TABLE IF NOT EXISTS groups (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- User-Group relationships
-CREATE TABLE IF NOT EXISTS user_groups (
-    user_id INTEGER,
-    group_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (user_id, group_id),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
-);
-
 -- Roles table
 CREATE TABLE IF NOT EXISTS roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,16 +24,6 @@ CREATE TABLE IF NOT EXISTS roles (
     description TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
--- Group-Role relationships
-CREATE TABLE IF NOT EXISTS group_roles (
-    group_id INTEGER,
-    role_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (group_id, role_id),
-    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
-    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 
 -- Modules table
@@ -63,6 +43,26 @@ CREATE TABLE IF NOT EXISTS permissions (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE CASCADE,
     UNIQUE(module_id, action)
+);
+
+-- User-Group relationships
+CREATE TABLE IF NOT EXISTS user_groups (
+    user_id INTEGER,
+    group_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, group_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
+);
+
+-- Group-Role relationships
+CREATE TABLE IF NOT EXISTS group_roles (
+    group_id INTEGER,
+    role_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (group_id, role_id),
+    FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 );
 
 -- Role-Permission relationships

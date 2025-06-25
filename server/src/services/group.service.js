@@ -4,12 +4,37 @@ const { db } = require('../config/db.config');
 class GroupService {
     async getAllGroups() {
         return new Promise((resolve, reject) => {
-            db.all('SELECT * FROM groups', (err, groups) => {
+            logger.info('Executing getAllGroups query');
+            const query = `
+                SELECT 
+                    g.id,
+                    g.name,
+                    g.description,
+                    g.created_at,
+                    g.updated_at,
+                    GROUP_CONCAT(r.name) AS roles,
+                    GROUP_CONCAT(u.username) AS users
+                FROM groups g
+                LEFT JOIN group_roles gr ON g.id = gr.group_id
+                LEFT JOIN roles r ON gr.role_id = r.id
+                LEFT JOIN user_groups ug ON g.id = ug.group_id
+                LEFT JOIN users u ON ug.user_id = u.id
+                GROUP BY g.id, g.name, g.description, g.created_at, g.updated_at
+            `;
+            db.all(query, (err, groups) => {
                 if (err) {
                     logger.error('Error fetching groups:', err);
                     reject(err);
+                    return;
                 }
-                resolve(groups);
+                logger.info('Groups fetched from database:', { count: groups.length });
+                // Parse roles and users into arrays
+                const parsedGroups = groups.map(group => ({
+                    ...group,
+                    roles: group.roles ? group.roles.split(',') : [],
+                    users: group.users ? group.users.split(',') : []
+                }));
+                resolve(parsedGroups);
             });
         });
     }
@@ -111,7 +136,7 @@ class GroupService {
         });
     }
 
-    async assignRoles(groupId, roleIds) {
+    async assignRoles(groupId, roleId) {
         // Check if group exists
         const group = await this.getGroupById(groupId);
         if (!group) {
@@ -132,12 +157,10 @@ class GroupService {
                 const stmt = db.prepare('INSERT INTO group_roles (group_id, role_id) VALUES (?, ?)');
                 let error = null;
 
-                roleIds.forEach(roleId => {
-                    stmt.run([groupId, roleId], (err) => {
-                        if (err) {
-                            error = err;
-                        }
-                    });
+                stmt.run([groupId, roleId], (err) => {
+                    if (err) {
+                        error = err;
+                    }
                 });
 
                 stmt.finalize();

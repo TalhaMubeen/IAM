@@ -11,7 +11,7 @@ const updateGroupSchema = Joi.object({
 }).min(1); // At least one field must be provided
 
 const assignRolesSchema = Joi.object({
-    roleIds: Joi.array().items(Joi.number().integer().positive()).required()
+    roleId: Joi.array().items(Joi.number().integer().positive()).required()
 });
 
 module.exports = {

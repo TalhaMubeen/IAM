@@ -81,8 +81,8 @@ class RoleController {
     async assignPermissions(req, res) {
         try {
             const { id } = req.params;
-            const { permissionIds } = req.body;
-            await roleService.assignPermissions(id, permissionIds);
+            const { permissionId } = req.body;
+            await roleService.assignPermissions(id, permissionId);
             res.json({ message: 'Permissions assigned successfully' });
         } catch (error) {
             logger.error('Error assigning permissions:', error);

@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useAuth } from "../hooks/useAuth";
 
 const CRUDTable = ({
   title,
+  module,
   data,
   columns,
   onAdd,
@@ -14,6 +16,7 @@ const CRUDTable = ({
   error,
 }) => {
   const { user } = useSelector((state) => state.auth);
+  const { checkPermission } = useAuth();
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [filter, setFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,17 +53,11 @@ const CRUDTable = ({
     currentPage * itemsPerPage,
   );
 
-  const canPerformAction = (action) => {
-    return user?.permissions?.some(
-      (permission) => permission.action === action,
-    );
-  };
-
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
         <h3 className="text-lg leading-6 font-medium text-gray-900">{title}</h3>
-        {canPerformAction("create") && (
+        {checkPermission(module, "create") && (
           <button
             type="button"
             onClick={onAdd}
@@ -129,7 +126,7 @@ const CRUDTable = ({
                   ))}
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
-                      {canPerformAction("update") && (
+                      {checkPermission(module, "update") && (
                         <button
                           onClick={() => onEdit(item)}
                           className="text-indigo-600 hover:text-indigo-900"
@@ -137,7 +134,7 @@ const CRUDTable = ({
                           Edit
                         </button>
                       )}
-                      {canPerformAction("delete") && (
+                      {checkPermission(module, "delete") && (
                         <button
                           onClick={() => onDelete(item)}
                           className="text-red-600 hover:text-red-900"
@@ -145,7 +142,7 @@ const CRUDTable = ({
                           Delete
                         </button>
                       )}
-                      {onAssign && canPerformAction("update") && (
+                      {onAssign && checkPermission(module, "update") && (
                         <button
                           onClick={() => onAssign(item)}
                           className="text-green-600 hover:text-green-900"

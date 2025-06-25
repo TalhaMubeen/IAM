@@ -4,12 +4,39 @@ const { db } = require('../config/db.config');
 class RoleService {
     async getAllRoles() {
         return new Promise((resolve, reject) => {
-            db.all('SELECT * FROM roles', (err, roles) => {
+            logger.info('Executing getAllRoles query');
+            const query = `
+                SELECT 
+                    r.id,
+                    r.name,
+                    r.description,
+                    r.created_at,
+                    r.updated_at,
+                    GROUP_CONCAT(m.name || ':' || p.action) AS permissions
+                FROM roles r
+                LEFT JOIN role_permissions rp ON r.id = rp.role_id
+                LEFT JOIN permissions p ON rp.permission_id = p.id
+                LEFT JOIN modules m ON p.module_id = m.id
+                GROUP BY r.id, r.name, r.description, r.created_at, r.updated_at
+            `;
+            db.all(query, (err, roles) => {
                 if (err) {
                     logger.error('Error fetching roles:', err);
                     reject(err);
+                    return;
                 }
-                resolve(roles);
+                logger.info('Roles fetched from database:', { count: roles.length });
+                // Parse permissions into an array of objects
+                const parsedRoles = roles.map(role => ({
+                    ...role,
+                    permissions: role.permissions 
+                        ? role.permissions.split(',').map(perm => {
+                            const [module, action] = perm.split(':');
+                            return { module, action };
+                        }) 
+                        : []
+                }));
+                resolve(parsedRoles);
             });
         });
     }
@@ -111,7 +138,7 @@ class RoleService {
         });
     }
 
-    async assignPermissions(roleId, permissionIds) {
+    async assignPermissions(roleId, permissionId) {
         // Check if role exists
         const role = await this.getRoleById(roleId);
         if (!role) {
@@ -132,12 +159,10 @@ class RoleService {
                 const stmt = db.prepare('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)');
                 let error = null;
 
-                permissionIds.forEach(permissionId => {
-                    stmt.run([roleId, permissionId], (err) => {
-                        if (err) {
-                            error = err;
-                        }
-                    });
+                stmt.run([roleId, permissionId], (err) => {
+                    if (err) {
+                        error = err;
+                    }
                 });
 
                 stmt.finalize();

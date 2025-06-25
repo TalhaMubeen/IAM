@@ -6,22 +6,22 @@ const { createUserSchema, updateUserSchema, assignGroupsSchema } = require('../v
 const { checkPermission } = require('../middleware/checkPermission.middleware');
 const userController = require('../controllers/user.controller');
 
-// Get all users
-router.get('/', verifyToken, checkPermission('users', 'read'), userController.getAllUsers);
+// Get all user
+router.get('/', verifyToken, checkPermission('user', 'read'), userController.getAllUsers);
 
 // Get user by ID
-router.get('/:id', verifyToken, checkPermission('users', 'read'), userController.getUserById);
+router.get('/:id', verifyToken, checkPermission('user', 'read'), userController.getUserById);
 
 // Create user
-router.post('/', verifyToken, checkPermission('users', 'create'), validate(createUserSchema), userController.createUser);
+router.post('/', verifyToken, checkPermission('user', 'create'), validate(createUserSchema), userController.createUser);
 
 // Update user
-router.put('/:id', verifyToken, checkPermission('users', 'update'), validate(updateUserSchema), userController.updateUser);
+router.put('/:id', verifyToken, checkPermission('user', 'update'), validate(updateUserSchema), userController.updateUser);
 
 // Delete user
-router.delete('/:id', verifyToken, checkPermission('users', 'delete'), userController.deleteUser);
+router.delete('/:id', verifyToken, checkPermission('user', 'delete'), userController.deleteUser);
 
 // Assign groups to user
-router.post('/:id/groups', verifyToken, checkPermission('users', 'update'), validate(assignGroupsSchema), userController.assignGroups);
+router.post('/:id/groups', verifyToken, checkPermission('user', 'update'), validate(assignGroupsSchema), userController.assignGroups);
 
 module.exports = router;

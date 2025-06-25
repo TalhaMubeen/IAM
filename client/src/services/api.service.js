@@ -51,7 +51,7 @@ export const userAPI = {
   create: (userData) => api.post('/users', userData),
   update: (id, userData) => api.put(`/users/${id}`, userData),
   delete: (id) => api.delete(`/users/${id}`),
-  assignToGroup: (groupId, userId) => api.post(`/groups/${groupId}/users`, { userId }),
+  assignToGroup: (groupId, userId) => api.post(`/users/${userId}/groups`, { groupId }),
 };
 
 // Group endpoints

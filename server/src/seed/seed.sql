@@ -1,8 +1,8 @@
 -- Insert test users (password is 'password123' hashed with bcrypt)
 INSERT INTO users (username, password, email) VALUES
-('admin', '$2a$12$3WYp.7fguT6275l0QXiFquHAh5iUVBNufYSwTNUtd8geUQSh/iJoC', 'admin@test.com'),
-('manager', '$2a$12$3WYp.7fguT6275l0QXiFquHAh5iUVBNufYSwTNUtd8geUQSh/iJoC', 'manager@test.com'),
-('user', '$2a$12$3WYp.7fguT6275l0QXiFquHAh5iUVBNufYSwTNUtd8geUQSh/iJoC', 'user@test.com');
+('admin', '$2a$12$EHcpKQTtgO3uE03AjoUSNePp36HWZ5jLT3D0Ke7avFPWWB.YrfL5C', 'admin@mid.com'),
+('manager', '$2a$12$EHcpKQTtgO3uE03AjoUSNePp36HWZ5jLT3D0Ke7avFPWWB.YrfL5C', 'manager@mid.com'),
+('user', '$2a$12$EHcpKQTtgO3uE03AjoUSNePp36HWZ5jLT3D0Ke7avFPWWB.YrfL5C', 'user@mid.com');
 
 -- Insert groups
 INSERT INTO groups (name, description) VALUES

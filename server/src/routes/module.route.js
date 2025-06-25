@@ -6,22 +6,22 @@ const { createModuleSchema, updateModuleSchema } = require('../validators');
 const { checkPermission } = require('../middleware/checkPermission.middleware');
 const moduleController = require('../controllers/module.controller');
 
-// Get all modules
-router.get('/', verifyToken, checkPermission('modules', 'read'), moduleController.getAllModules);
+// Get all module
+router.get('/', verifyToken, checkPermission('module', 'read'), moduleController.getAllModules);
 
 // Get module by ID
-router.get('/:id', verifyToken, checkPermission('modules', 'read'), moduleController.getModuleById);
+router.get('/:id', verifyToken, checkPermission('module', 'read'), moduleController.getModuleById);
 
 // Create module
-router.post('/', verifyToken, checkPermission('modules', 'create'), validate(createModuleSchema), moduleController.createModule);
+router.post('/', verifyToken, checkPermission('module', 'create'), validate(createModuleSchema), moduleController.createModule);
 
 // Update module
-router.put('/:id', verifyToken, checkPermission('modules', 'update'), validate(updateModuleSchema), moduleController.updateModule);
+router.put('/:id', verifyToken, checkPermission('module', 'update'), validate(updateModuleSchema), moduleController.updateModule);
 
 // Delete module
-router.delete('/:id', verifyToken, checkPermission('modules', 'delete'), moduleController.deleteModule);
+router.delete('/:id', verifyToken, checkPermission('module', 'delete'), moduleController.deleteModule);
 
 // Get module's permissions
-router.get('/:id/permissions', verifyToken, checkPermission('modules', 'read'), moduleController.getModulePermissions);
+router.get('/:id/permissions', verifyToken, checkPermission('module', 'read'), moduleController.getModulePermissions);
 
 module.exports = router;

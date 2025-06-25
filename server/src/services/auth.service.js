@@ -94,8 +94,16 @@ class AuthService {
 
     async getUserPermissions(userId) {
         return new Promise((resolve, reject) => {
+            // Validate userId
+            if (!userId || isNaN(parseInt(userId))) {
+                logger.error('Invalid userId provided:', userId);
+                reject(new Error('Invalid user ID'));
+                return;
+            }
+    
+            // Query to fetch permissions via group roles
             const query = `
-                SELECT DISTINCT m.name as module, p.action
+                SELECT DISTINCT m.name AS module, p.action
                 FROM permissions p
                 JOIN role_permissions rp ON p.id = rp.permission_id
                 JOIN roles r ON rp.role_id = r.id
@@ -104,33 +112,37 @@ class AuthService {
                 JOIN modules m ON p.module_id = m.id
                 WHERE ug.user_id = ?
             `;
-
-            logger.info('Fetching permissions for user:', userId);
+    
+            logger.info('Fetching permissions for user:', { userId });
             logger.info('SQL Query:', query);
-
+    
             db.all(query, [userId], (err, permissions) => {
                 if (err) {
-                    logger.error('Error fetching permissions:', err);
-                    reject(err);
+                    logger.error('Error executing permissions query:', { error: err.message });
+                    reject(new Error('Failed to fetch permissions'));
                     return;
                 }
-
-                logger.info('Raw permissions:', permissions);
-
+    
+                logger.info('Raw permissions fetched:', { count: permissions.length });
+    
                 if (!permissions || permissions.length === 0) {
-                    logger.info('No permissions found for user:', userId);
-                    resolve({ permissions: {} });
+                    logger.info('No permissions found:', { userId });
+                    resolve({ permissions: [] });
                     return;
                 }
-
+    
+                // Group permissions by module
                 const groupedPermissions = permissions.reduce((acc, curr) => {
                     if (!acc[curr.module]) {
                         acc[curr.module] = [];
                     }
-                    acc[curr.module].push(curr.action);
+                    // Avoid duplicate actions
+                    if (!acc[curr.module].includes(curr.action)) {
+                        acc[curr.module].push(curr.action);
+                    }
                     return acc;
                 }, {});
-
+    
                 logger.info('Grouped permissions:', groupedPermissions);
                 resolve({ permissions: groupedPermissions });
             });

@@ -6,14 +6,31 @@ class UserService {
     async getAllUsers() {
         return new Promise((resolve, reject) => {
             logger.info('Executing getAllUsers query');
-            db.all('SELECT id, username, email, created_at FROM users', (err, users) => {
+            const query = `
+                SELECT 
+                    u.id,
+                    u.username,
+                    u.email,
+                    u.created_at,
+                    GROUP_CONCAT(g.name) AS groups
+                FROM users u
+                LEFT JOIN user_groups ug ON u.id = ug.user_id
+                LEFT JOIN groups g ON ug.group_id = g.id
+                GROUP BY u.id, u.username, u.email, u.created_at
+            `;
+            db.all(query, (err, users) => {
                 if (err) {
                     logger.error('Error fetching users:', err);
                     reject(err);
                     return;
                 }
                 logger.info('Users fetched from database:', { count: users.length });
-                resolve(users);
+                // Parse groups into an array
+                const parsedUsers = users.map(user => ({
+                    ...user,
+                    groups: user.groups ? user.groups.split(',') : []
+                }));
+                resolve(parsedUsers);
             });
         });
     }
@@ -128,7 +145,7 @@ class UserService {
         });
     }
 
-    async assignGroups(userId, groupIds) {
+    async assignGroup(userId, groupId) {
         // Check if user exists
         const user = await this.getUserById(userId);
         if (!user) {
@@ -149,12 +166,10 @@ class UserService {
                 const stmt = db.prepare('INSERT INTO user_groups (user_id, group_id) VALUES (?, ?)');
                 let error = null;
 
-                groupIds.forEach(groupId => {
-                    stmt.run([userId, groupId], (err) => {
-                        if (err) {
-                            error = err;
-                        }
-                    });
+                stmt.run([userId, groupId], (err) => {
+                    if (err) {
+                        error = err;
+                    }
                 });
 
                 stmt.finalize();

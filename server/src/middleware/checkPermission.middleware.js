@@ -20,77 +20,66 @@ class ValidationError extends Error {
 
 // Simple validation
 const validateInput = (module, action) => {
-    if (!module || !action) {
-        throw new Error('Module and action are required');
+    const validModules = ['user', 'group', 'role', 'module', 'permission']; // From seed.sql
+    const validActions = ['create', 'read', 'update', 'delete'];
+    if (!validModules.includes(module)) {
+        throw new Error(`Invalid module: ${module}`);
     }
-    if (!['create', 'read', 'update', 'delete'].includes(action.toLowerCase())) {
-        throw new Error('Invalid action. Must be one of: create, read, update, delete');
+    if (!validActions.includes(action)) {
+        throw new Error(`Invalid action: ${action}`);
     }
 };
 
-// Cache for frequently checked permissions
-const permissionCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-const getCacheKey = (userId, module, action) => `${userId}:${module}:${action}`;
-
-const checkPermissionInCache = (userId, module, action) => {
-    const cacheKey = getCacheKey(userId, module, action);
-    const cached = permissionCache.get(cacheKey);
-
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.allowed;
-    }
-
-    return null;
-};
-
-const setPermissionInCache = (userId, module, action, allowed) => {
-    const cacheKey = getCacheKey(userId, module, action);
-    permissionCache.set(cacheKey, {
-        allowed,
-        timestamp: Date.now()
-    });
-};
 
 // Permission checking middleware
 module.exports.checkPermission = (module, action) => {
     return async (req, res, next) => {
         try {
-            // Basic validation
+            // Validate input
             validateInput(module, action);
 
             // Check authentication
             if (!req.user?.id) {
-                return res.status(401).json({
-                    error: 'Authentication required'
-                });
+                logger.error('Authentication required', { user: req.user });
+                return res.status(401).json({ error: 'Authentication required' });
             }
 
-            // Check cache first
-            // const cachedPermission = checkPermissionInCache(req.user.id, module, action);
-            // if (cachedPermission !== null) {
-            //     if (cachedPermission) {
-            //         return next();
-            //     } else {
-            //         return res.status(403).json({
-            //             error: 'Permission denied',
-            //             module,
-            //             action
-            //         });
-            //     }
-            // }
+            // Verify module exists
+            const moduleExists = await new Promise((resolve, reject) => {
+                db.get('SELECT id FROM modules WHERE name = ?', [module], (err, row) => {
+                    if (err) {
+                        logger.error('Error checking module existence:', { error: err.message });
+                        reject(err);
+                    }
+                    resolve(!!row);
+                });
+            });
 
-            // Simple permission check query
+            if (!moduleExists) {
+                logger.warn('Module not found:', { module });
+                return res.status(400).json({ error: `Module '${module}' does not exist` });
+            }
+
+            // Permission check query, including optional user_roles
             const query = `
-                SELECT 1
+                SELECT DISTINCT 1
                 FROM permissions p
                 JOIN role_permissions rp ON p.id = rp.permission_id
-                JOIN group_roles gr ON rp.role_id = gr.role_id
-                JOIN user_groups ug ON gr.group_id = ug.group_id
-                WHERE ug.user_id = ? 
-                AND p.module_id = (SELECT id FROM modules WHERE name = ?)
+                JOIN roles r ON rp.role_id = r.id
+                LEFT JOIN (
+                    SELECT gr.group_id, gr.role_id
+                    FROM group_roles gr
+                    JOIN user_groups ug ON gr.group_id = ug.group_id
+                    WHERE ug.user_id = ?
+                    UNION
+                    SELECT NULL AS group_id, ur.role_id
+                    FROM user_roles ur
+                    WHERE ur.user_id = ?
+                ) role_assignments ON r.id = role_assignments.role_id
+                JOIN modules m ON p.module_id = m.id
+                WHERE m.name = ?
                 AND p.action = ?
+                AND role_assignments.role_id IS NOT NULL
                 LIMIT 1
             `;
 
@@ -101,18 +90,40 @@ module.exports.checkPermission = (module, action) => {
             });
 
             const hasPermission = await new Promise((resolve, reject) => {
-                db.get(query, [req.user.id, module, action], (err, row) => {
+                db.get(query, [req.user.id, req.user.id, module, action], (err, row) => {
                     if (err) {
-                        logger.error('Permission check failed:', err);
-                        reject(err);
-                        return;
+                        // Ignore user_roles table error if it doesn't exist
+                        if (err.message.includes('no such table: user_roles')) {
+                            // Retry without user_roles
+                            const fallbackQuery = `
+                                SELECT DISTINCT 1
+                                FROM permissions p
+                                JOIN role_permissions rp ON p.id = rp.permission_id
+                                JOIN roles r ON rp.role_id = r.id
+                                JOIN group_roles gr ON r.id = gr.role_id
+                                JOIN user_groups ug ON gr.group_id = ug.group_id
+                                JOIN modules m ON p.module_id = m.id
+                                WHERE ug.user_id = ?
+                                AND m.name = ?
+                                AND p.action = ?
+                                LIMIT 1
+                            `;
+                            db.get(fallbackQuery, [req.user.id, module, action], (fallbackErr, fallbackRow) => {
+                                if (fallbackErr) {
+                                    logger.error('Fallback permission check failed:', { error: fallbackErr.message });
+                                    reject(fallbackErr);
+                                }
+                                resolve(!!fallbackRow);
+                            });
+                        } else {
+                            logger.error('Permission check failed:', { error: err.message });
+                            reject(err);
+                        }
+                    } else {
+                        resolve(!!row);
                     }
-                    resolve(!!row);
                 });
             });
-
-            // Cache the result
-            setPermissionInCache(req.user.id, module, action, hasPermission);
 
             logger.info('Permission check result:', {
                 userId: req.user.id,
@@ -122,6 +133,11 @@ module.exports.checkPermission = (module, action) => {
             });
 
             if (!hasPermission) {
+                logger.warn('Permission denied:', {
+                    userId: req.user.id,
+                    module,
+                    action
+                });
                 return res.status(403).json({
                     error: 'Permission denied',
                     module,
@@ -131,7 +147,7 @@ module.exports.checkPermission = (module, action) => {
 
             next();
         } catch (error) {
-            logger.error('Permission check error:', error);
+            logger.error('Permission check error:', { error: error.message });
             return res.status(500).json({ error: 'Internal server error' });
         }
     };

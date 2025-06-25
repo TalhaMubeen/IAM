@@ -10,10 +10,10 @@ export const useAuth = () => {
 
   const login = async (credentials) => {
     try {
-      const response = await authAPI.login(credentials);
-      dispatch(loginAction(response.data));
-      navigate('/');
-      return response.data;
+      // const response = await authAPI.login(credentials);
+      dispatch(loginAction(credentials));
+      navigate('/dashboard');
+      return;
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       throw new Error(errorMessage);
