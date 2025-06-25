@@ -24,18 +24,25 @@ A comprehensive Identity and Access Management (IAM) system built with Node.js, 
 .
 ├── client/                 # React frontend
 │   ├── src/
-│   │   ├── components/    # React components
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # React hooks
+│   │   ├── layouts/      # React layouts
 │   │   ├── pages/        # Page components
+│   │   ├── services/     # services
 │   │   ├── store/        # Redux store and slices
 │   │   └── App.js        # Main application component
 │   └── package.json
 └── server/                # Node.js backend
     ├── src/
     │   ├── config/       # Configuration files
+    │   ├── controllers/  # Controllers
     │   ├── middleware/   # Express middleware
     │   ├── routes/       # API routes
     │   ├── seed/         # Database seeding
+    │   ├── services/     # Services
+    │   ├── validators/     # Validators
     │   └── app.js        # Express application
+    │   └── server.js        # Express Server
     └── package.json
 ```
 
@@ -61,14 +68,19 @@ A comprehensive Identity and Access Management (IAM) system built with Node.js, 
 3. Create environment files:
    - Create `.env` in the server directory:
      ```
-     NODE_ENV=development
-     PORT=3000
-     JWT_SECRET=your-secret-key
-     JWT_EXPIRES_IN=24h
-     DB_PATH=./data/iam.db
-     CORS_ORIGIN=http://localhost:3000
-     RATE_LIMIT_WINDOW_MS=900000
-     RATE_LIMIT_MAX_REQUESTS=100
+      NODE_ENV=development
+      PORT=3000
+      DB_PATH=:memory:
+      JWT_SECRET=dev-secret-key
+      JWT_EXPIRES_IN=24h
+      CORS_ORIGIN=http://localhost:3001
+      RATE_LIMIT_WINDOW_MS=1000
+      RATE_LIMIT_MAX_REQUESTS=100
+      LOG_LEVEL=debug
+      BCRYPT_SALT_ROUNDS=10
+      ADMIN_USERNAME=admin
+      ADMIN_PASSWORD=Admin@123
+      ADMIN_EMAIL=admin@admin.com
      ```
 
 4. Initialize the database:
@@ -89,19 +101,6 @@ A comprehensive Identity and Access Management (IAM) system built with Node.js, 
    ```
 
 ## Development
-
-### Backend Development
-
-- Run tests:
-  ```bash
-  cd server
-  npm test
-  ```
-
-- Run linting:
-  ```bash
-  npm run lint
-  ```
 
 ### Frontend Development
 
@@ -129,14 +128,6 @@ The API documentation is available at `/api-docs` when running the server.
 - Helmet security headers
 - SQL injection prevention
 - XSS protection
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
